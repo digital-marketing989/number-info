@@ -150,15 +150,28 @@ async function search() {
     btn.disabled = true;
 
     try {
-        const res = await fetch(`/api/search/${number}`);
+        const res = await fetch(`https://lynx.mireiariosss.workers.dev/api/search/${number}`);
 
         if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            showStatus(`❌ ${err.error || 'Server error ' + res.status}`, 'error');
+            showStatus(`❌ API Error ${res.status}. Baad mein try karein.`, 'error');
             return;
         }
 
-        const data = await res.json();
+        // Clean trailing text if any (API returns JSON + extra text sometimes)
+        const rawText = await res.text();
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            showStatus('❌ API ne invalid response diya.', 'error');
+            return;
+        }
+        
+        let data;
+        try {
+            data = JSON.parse(jsonMatch[0]);
+        } catch(e) {
+            showStatus('❌ Error parsing data.', 'error');
+            return;
+        }
 
         if (!data.success) {
             showStatus(`❌ ${data.error || 'Koi data nahi mila'}`, 'error');
@@ -170,11 +183,20 @@ async function search() {
             return;
         }
 
+        // Remove duplicates (same aadhar + mobile + name)
+        const seen = new Set();
+        data.results = data.results.filter(r => {
+            const key = `${r.mobile}-${r.aadhar}-${r.name}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+
         showStatus(`✅ ${data.results.length} record${data.results.length > 1 ? 's' : ''} mila!`, 'success');
         renderResults(data.results);
 
     } catch (err) {
-        showStatus('❌ Network error. Backend chal raha hai? (localhost:5000)', 'error');
+        showStatus('❌ Network error. Please check your internet connection.', 'error');
         console.error(err);
     } finally {
         btn.disabled = false;
