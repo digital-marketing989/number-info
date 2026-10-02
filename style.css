@@ -407,6 +407,37 @@ body {
     background-clip: text;
 }
 
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.nav-website-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2));
+    border: 1px solid rgba(168, 85, 247, 0.4);
+    border-radius: 99px;
+    color: #e0e7ff;
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
+    letter-spacing: 0.5px;
+    transition: all 0.25s ease;
+}
+
+.nav-website-btn:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(168, 85, 247, 0.4));
+    border-color: #a855f7;
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(168, 85, 247, 0.35);
+}
+
 .nav-tag {
     font-size: 10px;
     font-weight: 700;
@@ -772,6 +803,132 @@ h1 {
     background-clip: text;
     letter-spacing: 0.5px;
 }
+/* ── Admin Contact & Credits Box ── */
+.admin-contact-box {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.08) 100%);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin: 16px auto 20px;
+    max-width: 600px;
+    box-shadow: 0 8px 32px rgba(124, 58, 237, 0.15);
+    backdrop-filter: blur(10px);
+}
+
+.contact-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.contact-icon {
+    font-size: 26px;
+    animation: pulse 2s infinite ease-in-out;
+}
+
+.contact-title {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    color: #c084fc;
+    text-transform: uppercase;
+}
+
+.contact-subtitle {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.75);
+    font-weight: 500;
+    margin-top: 2px;
+}
+
+.contact-links {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.contact-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 18px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.25s ease;
+}
+
+.tg-badge {
+    background: rgba(36, 161, 222, 0.15);
+    border: 1px solid rgba(36, 161, 222, 0.4);
+    color: #38bdf8;
+}
+
+.tg-badge svg {
+    fill: #38bdf8;
+}
+
+.tg-badge:hover {
+    background: rgba(36, 161, 222, 0.3);
+    border-color: #38bdf8;
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(56, 189, 248, 0.4);
+}
+
+.tg-badge:hover svg {
+    fill: #fff;
+}
+
+.call-badge {
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid rgba(34, 197, 94, 0.4);
+    color: #4ade80;
+}
+
+.call-badge svg {
+    fill: #4ade80;
+}
+
+.call-badge:hover {
+    background: rgba(34, 197, 94, 0.3);
+    border-color: #4ade80;
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(74, 222, 128, 0.4);
+}
+
+.call-badge:hover svg {
+    fill: #fff;
+}
+
+.site-badge {
+    background: rgba(168, 85, 247, 0.15);
+    border: 1px solid rgba(168, 85, 247, 0.4);
+    color: #c084fc;
+}
+
+.site-badge svg {
+    fill: #c084fc;
+}
+
+.site-badge:hover {
+    background: rgba(168, 85, 247, 0.3);
+    border-color: #c084fc;
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(168, 85, 247, 0.4);
+}
+
+.site-badge:hover svg {
+    fill: #fff;
+}
+
 .footer-sub {
     font-size: 11px;
     color: rgba(255,255,255,0.25);
