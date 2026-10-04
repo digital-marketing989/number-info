@@ -29,31 +29,35 @@ async function search() {
     btn.disabled = true;
 
     try {
-        const res = await fetch(`https://lynx.mireiariosss.workers.dev/api/search/${number}`);
+        const res = await fetch(`https://ftosint.world/api/number?key=danish-nfs&num=${number}`);
 
         if (!res.ok) {
             showStatus(`❌ API Error ${res.status}. Baad mein try karein.`, 'error');
             return;
         }
 
-        // Clean trailing text if any (API returns JSON + extra text sometimes)
         const rawText = await res.text();
-        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-            showStatus('❌ API ne invalid response diya.', 'error');
-            return;
-        }
-        
         let data;
         try {
-            data = JSON.parse(jsonMatch[0]);
+            // Try direct parse first
+            data = JSON.parse(rawText);
         } catch(e) {
-            showStatus('❌ Error parsing data.', 'error');
-            return;
+            // Fallback: extract JSON object
+            const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+                showStatus('❌ API ne invalid response diya.', 'error');
+                return;
+            }
+            try {
+                data = JSON.parse(jsonMatch[0]);
+            } catch(e2) {
+                showStatus('❌ Error parsing data.', 'error');
+                return;
+            }
         }
 
         if (!data.success) {
-            showStatus(`❌ ${data.error || 'Koi data nahi mila'}`, 'error');
+            showStatus(`❌ ${data.error || data.message || 'Koi data nahi mila'}`, 'error');
             return;
         }
 
@@ -62,7 +66,17 @@ async function search() {
             return;
         }
 
-        // Remove duplicates (same aadhar + mobile + name)
+        // Normalize new API fields to old field names
+        data.results = data.results.map(r => ({
+            ...r,
+            aadhar      : r.id       ?? r.aadhar ?? null,
+            father_name : r.fname    ?? r.father_name ?? null,
+            alternate   : r.alt      ?? r.alternate ?? null,
+            email       : (r.email === 'N/A' || r.email === '') ? null : r.email,
+            aadhar_disp : (r.id === 'N/A' || r.id === '') ? null : (r.id ?? r.aadhar ?? null),
+        }));
+
+        // Remove duplicates (same id + mobile + name)
         const seen = new Set();
         data.results = data.results.filter(r => {
             const key = `${r.mobile}-${r.aadhar}-${r.name}`;
@@ -71,8 +85,10 @@ async function search() {
             return true;
         });
 
-        showStatus(`✅ ${data.results.length} record${data.results.length > 1 ? 's' : ''} mila!`, 'success');
-        renderResults(data.results);
+        const truecallerLine = data.truecaller_name
+            ? ` | 📲 Truecaller: <b>${data.truecaller_name}</b>` : '';
+        showStatus(`✅ ${data.results.length} record${data.results.length > 1 ? 's' : ''} mila!${truecallerLine}`, 'success');
+        renderResults(data.results, data.truecaller_name);
 
     } catch (err) {
         showStatus('❌ Network error. Please check your internet connection.', 'error');
@@ -83,26 +99,40 @@ async function search() {
 }
 
 function showStatus(msg, cls) {
-    statusEl.textContent = msg;
-    statusEl.className   = 'status ' + cls;
+    statusEl.innerHTML = msg;
+    statusEl.className = 'status ' + cls;
 }
 
 
 /* ══════════════════════════════════════
    RENDER RESULTS + MODERN RESPONSIVE TILES
 ══════════════════════════════════════ */
-function renderResults(results) {
+function renderResults(results, truecallerName) {
+    // Show truecaller banner if available
+    if (truecallerName) {
+        const banner = document.createElement('div');
+        banner.className = 'truecaller-banner';
+        banner.innerHTML = `📲 <strong>Truecaller Name:</strong> ${truecallerName}`;
+        resultsDiv.appendChild(banner);
+    }
+
     results.forEach((r, i) => {
         const card = document.createElement('div');
         card.className = 'card';
 
-        // Clean address — replace multiple ! with comma-space
+        // Clean address — replace ! and run-on text with comma-space
         const addressClean = r.address
-            ? r.address.replace(/!+/g, ', ').replace(/^,\s*/, '').replace(/,\s*,/g, ',').trim()
+            ? r.address.replace(/!+/g, ', ').replace(/^,\s*/, '').replace(/,\s*,/g, ',').replace(/\n/g, ' ').trim()
             : null;
 
+        // Normalize null-ish values
+        const fname    = (r.father_name === 'N/A' || !r.father_name) ? null : r.father_name;
+        const aadhar   = (r.aadhar_disp === 'N/A' || !r.aadhar_disp) ? null : r.aadhar_disp;
+        const alternate= (r.alternate === 'N/A' || !r.alternate) ? null : r.alternate;
+        const email    = r.email || null;
+
         // Build plain-text for clipboard
-        const copyText = buildCopyText(r, addressClean, i + 1);
+        const copyText = buildCopyText(r, addressClean, i + 1, truecallerName);
 
         card.innerHTML = `
             <div class="card-header">
@@ -118,11 +148,11 @@ function renderResults(results) {
             <div class="info-grid">
                 ${tile('📱', 'Mobile Number', r.mobile, 'highlight')}
                 ${tile('👤', 'Full Name', r.name)}
-                ${tile('👨', "Father's Name", r.father_name)}
-                ${tile('🆔', 'Aadhaar Number', r.aadhar)}
+                ${tile('👨', "Father's Name", fname)}
+                ${tile('🆔', 'Aadhaar Number', aadhar)}
                 ${tile('📡', 'Telecom Circle', r.circle, 'circle')}
-                ${tile('📞', 'Alternate Number', r.alternate)}
-                ${tile('📧', 'Email Address', r.email)}
+                ${tile('📞', 'Alternate Number', alternate)}
+                ${tile('📧', 'Email Address', email)}
                 ${tile('🏠', 'Registered Address', addressClean, 'address full-width')}
             </div>
         `;
@@ -146,17 +176,23 @@ function tile(icon, label, val, type = '') {
     </div>`;
 }
 
-function buildCopyText(r, addressClean, num) {
+function buildCopyText(r, addressClean, num, truecallerName) {
+    const fname    = (r.father_name === 'N/A' || !r.father_name) ? '—' : r.father_name;
+    const aadhar   = (r.aadhar_disp === 'N/A' || !r.aadhar_disp) ? '—' : r.aadhar_disp;
+    const alternate= (r.alternate === 'N/A' || !r.alternate) ? '—' : r.alternate;
+    const email    = (!r.email || r.email === 'N/A') ? '—' : r.email;
+
     const lines = [
         `━━━━ Record #${num} ━━━━`,
         `📱 Mobile    : ${r.mobile    ?? '—'}`,
         `👤 Name      : ${r.name      ?? '—'}`,
-        `👨 Father    : ${r.father_name ?? '—'}`,
+        `📲 Truecaller: ${truecallerName ?? '—'}`,
+        `👨 Father    : ${fname}`,
         `🏠 Address   : ${addressClean ?? '—'}`,
-        `📞 Alternate : ${r.alternate ?? '—'}`,
+        `📞 Alternate : ${alternate}`,
         `📡 Circle    : ${r.circle    ?? '—'}`,
-        `🆔 Aadhaar   : ${r.aadhar   ?? '—'}`,
-        `📧 Email     : ${r.email     ?? '—'}`,
+        `🆔 Aadhaar   : ${aadhar}`,
+        `📧 Email     : ${email}`,
         `━━━━━━━━━━━━━━━━━`,
         `🛡️ DARKIE ZONE CYBERSECURITY`,
     ];
