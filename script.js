@@ -29,7 +29,7 @@ async function search() {
     btn.disabled = true;
 
     try {
-        const res = await fetch(`https://ftosint.world/api/number?key=danish-nfs&num=${number}`);
+        const res = await fetch(`https://ftosint.world/api/number?key=megule&num=${number}`);
 
         if (!res.ok) {
             showStatus(`❌ API Error ${res.status}. Baad mein try karein.`, 'error');
