@@ -606,6 +606,82 @@ h1 {
 /* ── Result Cards ── */
 .results { margin-top: 20px; display: flex; flex-direction: column; gap: 16px; }
 
+/* ── Results Actions Bar (Copy All Records) ── */
+.results-actions-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(167, 139, 250, 0.25);
+    border-radius: 14px;
+    padding: 12px 18px;
+    backdrop-filter: blur(12px);
+    animation: fadeIn 0.35s ease;
+    gap: 12px;
+    flex-wrap: wrap;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.2);
+}
+
+.results-count-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #cbd5e1;
+}
+
+.results-count-badge strong {
+    color: #a78bfa;
+    font-weight: 700;
+}
+
+.count-pulse {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #34d399;
+    box-shadow: 0 0 10px #34d399;
+    display: inline-block;
+    animation: pulse-green 2s infinite;
+}
+
+.copy-all-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 18px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.35);
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+}
+
+.copy-all-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 22px rgba(102, 126, 234, 0.55);
+    background: linear-gradient(135deg, #7b91f5 0%, #8b5cc0 100%);
+    color: #ffffff;
+}
+
+.copy-all-btn:active {
+    transform: translateY(0);
+}
+
+.copy-all-btn.copied {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border-color: rgba(52, 211, 153, 0.6);
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.45);
+    color: #ffffff;
+}
+
 .card {
     background: rgba(255,255,255,0.04);
     border: 1px solid rgba(255,255,255,0.08);
@@ -1029,6 +1105,19 @@ h1 {
     .search-box { flex-direction: column; flex-wrap: nowrap; gap: 8px; }
     .input-wrap { min-width: unset; width: 100%; }
     #searchBtn { width: 100%; padding: 14px; font-size: 14px; }
+
+    /* Results Actions Bar */
+    .results-actions-bar {
+        padding: 10px 14px;
+        gap: 10px;
+    }
+    .results-count-badge { font-size: 12px; }
+    .copy-all-btn {
+        width: 100%;
+        justify-content: center;
+        font-size: 12px;
+        padding: 8px 14px;
+    }
 
     /* Cards & Info Grid — 1 Column on Mobile */
     .card { padding: 16px 14px; border-radius: 14px; }

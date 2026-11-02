@@ -6,6 +6,9 @@ const btn        = document.getElementById('searchBtn');
 const statusEl   = document.getElementById('status');
 const resultsDiv = document.getElementById('results');
 
+let currentResultsData = [];
+let currentTruecallerName = null;
+
 input?.addEventListener('input', e => {
     e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
 });
@@ -108,6 +111,9 @@ function showStatus(msg, cls) {
    RENDER RESULTS + MODERN RESPONSIVE TILES
 ══════════════════════════════════════ */
 function renderResults(results, truecallerName) {
+    currentResultsData = results;
+    currentTruecallerName = truecallerName;
+
     // Show truecaller banner if available
     if (truecallerName) {
         const banner = document.createElement('div');
@@ -115,6 +121,20 @@ function renderResults(results, truecallerName) {
         banner.innerHTML = `📲 <strong>Truecaller Name:</strong> ${truecallerName}`;
         resultsDiv.appendChild(banner);
     }
+
+    // Results Actions Bar with "Copy All Records" button
+    const actionsBar = document.createElement('div');
+    actionsBar.className = 'results-actions-bar';
+    actionsBar.innerHTML = `
+        <div class="results-count-badge">
+            <span class="count-pulse"></span>
+            <span>Total Records: <strong>${results.length}</strong></span>
+        </div>
+        <button class="copy-all-btn" id="copyAllBtn" onclick="copyAllRecords()">
+            📋 Copy All Records
+        </button>
+    `;
+    resultsDiv.appendChild(actionsBar);
 
     results.forEach((r, i) => {
         const card = document.createElement('div');
@@ -131,16 +151,13 @@ function renderResults(results, truecallerName) {
         const alternate= (r.alternate === 'N/A' || !r.alternate) ? null : r.alternate;
         const email    = r.email || null;
 
-        // Build plain-text for clipboard
-        const copyText = buildCopyText(r, addressClean, i + 1, truecallerName);
-
         card.innerHTML = `
             <div class="card-header">
                 <div class="card-title-group">
                     <span class="card-badge">RECORD #${i + 1}</span>
                     <span class="card-chip">OSINT INTEL</span>
                 </div>
-                <button class="copy-btn" id="copyBtn${i}" onclick="copyRecord(${i}, \`${escapeBt(copyText)}\`)">
+                <button class="copy-btn" id="copyBtn${i}" onclick="copyRecord(${i})">
                     📋 Copy Record
                 </button>
             </div>
@@ -199,37 +216,87 @@ function buildCopyText(r, addressClean, num, truecallerName) {
     return lines.join('\n');
 }
 
-// Escape backticks for inline template literal usage
-function escapeBt(str) {
-    return str.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+function buildAllRecordsCopyText(results, truecallerName) {
+    const header = [
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        `🛡️ DARKIE ZONE CYBERSECURITY INTEL`,
+        `📊 Total Records Found: ${results.length}`,
+        truecallerName ? `📲 Truecaller: ${truecallerName}` : null,
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`,
+    ].filter(Boolean).join('\n');
+
+    const recordsText = results.map((r, i) => {
+        const addressClean = r.address
+            ? r.address.replace(/!+/g, ', ').replace(/^,\s*/, '').replace(/,\s*,/g, ',').replace(/\n/g, ' ').trim()
+            : null;
+        return buildCopyText(r, addressClean, i + 1, truecallerName);
+    }).join('\n\n');
+
+    return `${header}${recordsText}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🛡️ Darkie Zone OSINT Tool`;
 }
 
-function copyRecord(idx, text) {
-    navigator.clipboard.writeText(text).then(() => {
-        const btn = document.getElementById(`copyBtn${idx}`);
-        btn.textContent = '✅ Copied!';
-        btn.classList.add('copied');
-        setTimeout(() => {
-            btn.textContent = '📋 Copy Record';
-            btn.classList.remove('copied');
-        }, 2000);
-    }).catch(() => {
-        // Fallback for older browsers or non-secure contexts
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.opacity  = '0';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
+function copyToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+        return navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+    }
+    return fallbackCopy(text);
+}
 
-        const btn = document.getElementById(`copyBtn${idx}`);
-        btn.textContent = '✅ Copied!';
-        btn.classList.add('copied');
-        setTimeout(() => {
-            btn.textContent = '📋 Copy Record';
-            btn.classList.remove('copied');
-        }, 2000);
+function fallbackCopy(text) {
+    return new Promise((resolve, reject) => {
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity  = '0';
+            ta.style.left     = '-9999px';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            const success = document.execCommand('copy');
+            document.body.removeChild(ta);
+            if (success) resolve();
+            else reject(new Error('execCommand copy failed'));
+        } catch (err) {
+            reject(err);
+        }
     });
+}
+
+function copyRecord(idx) {
+    const r = currentResultsData[idx];
+    if (!r) return;
+    const addressClean = r.address
+        ? r.address.replace(/!+/g, ', ').replace(/^,\s*/, '').replace(/,\s*,/g, ',').replace(/\n/g, ' ').trim()
+        : null;
+    const copyText = buildCopyText(r, addressClean, idx + 1, currentTruecallerName);
+    const copyBtn = document.getElementById(`copyBtn${idx}`);
+
+    copyToClipboard(copyText).then(() => {
+        if (copyBtn) {
+            copyBtn.textContent = '✅ Copied!';
+            copyBtn.classList.add('copied');
+            setTimeout(() => {
+                copyBtn.textContent = '📋 Copy Record';
+                copyBtn.classList.remove('copied');
+            }, 2000);
+        }
+    }).catch(err => console.error('Copy failed:', err));
+}
+
+function copyAllRecords() {
+    if (!currentResultsData || currentResultsData.length === 0) return;
+    const allText = buildAllRecordsCopyText(currentResultsData, currentTruecallerName);
+    const copyAllBtn = document.getElementById('copyAllBtn');
+
+    copyToClipboard(allText).then(() => {
+        if (copyAllBtn) {
+            copyAllBtn.innerHTML = '✅ All Records Copied!';
+            copyAllBtn.classList.add('copied');
+            setTimeout(() => {
+                copyAllBtn.innerHTML = '📋 Copy All Records';
+                copyAllBtn.classList.remove('copied');
+            }, 2000);
+        }
+    }).catch(err => console.error('Copy all failed:', err));
 }
