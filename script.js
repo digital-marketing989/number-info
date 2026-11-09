@@ -19,6 +19,36 @@ input?.addEventListener('keypress', e => {
 
 btn?.addEventListener('click', search);
 
+async function fetchWithTimeout(url, timeoutMs = 7000) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(id);
+        return response;
+    } catch (err) {
+        clearTimeout(id);
+        throw err;
+    }
+}
+
+function parseJsonSafe(text) {
+    if (!text) return null;
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            try {
+                return JSON.parse(jsonMatch[0]);
+            } catch (e2) {
+                return null;
+            }
+        }
+        return null;
+    }
+}
+
 async function search() {
     const number = input.value.trim();
 
@@ -32,35 +62,46 @@ async function search() {
     btn.disabled = true;
 
     try {
-        const res = await fetch(`https://osint-apis-hub.onrender.com/api/num-info?key=1MonthFree&q=91${number}`);
+        let data = null;
+        let lastError = null;
 
-        if (!res.ok) {
-            showStatus(`❌ API Error ${res.status}. Baad mein try karein.`, 'error');
-            return;
-        }
-
-        const rawText = await res.text();
-        let data;
+        // 1. Try Primary API (osint-apis-hub)
         try {
-            // Try direct parse first
-            data = JSON.parse(rawText);
-        } catch(e) {
-            // Fallback: extract JSON object
-            const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-            if (!jsonMatch) {
-                showStatus('❌ API ne invalid response diya.', 'error');
-                return;
+            const res = await fetchWithTimeout(`https://osint-apis-hub.onrender.com/api/num-info?key=1MonthFree&q=91${number}`, 7000);
+            if (res.ok) {
+                const rawText = await res.text();
+                const parsed = parseJsonSafe(rawText);
+                if (parsed && (parsed.status === true || parsed.success === true)) {
+                    data = parsed;
+                } else if (parsed && (parsed.error || parsed.message)) {
+                    lastError = parsed.error || parsed.message;
+                }
             }
+        } catch (e) {
+            console.warn('Primary API unavailable or timed out:', e);
+        }
+
+        // 2. Fallback to backup fast API (ftosint.world) if primary didn't return data
+        if (!data) {
             try {
-                data = JSON.parse(jsonMatch[0]);
-            } catch(e2) {
-                showStatus('❌ Error parsing data.', 'error');
-                return;
+                showStatus('⏳ Connecting to Darkie Zone fast node... please wait', 'loading');
+                const res2 = await fetchWithTimeout(`https://ftosint.world/api/number?key=megule&num=${number}`, 9000);
+                if (res2.ok) {
+                    const rawText2 = await res2.text();
+                    const parsed2 = parseJsonSafe(rawText2);
+                    if (parsed2 && (parsed2.status === true || parsed2.success === true)) {
+                        data = parsed2;
+                    } else if (parsed2 && (parsed2.error || parsed2.message)) {
+                        lastError = parsed2.error || parsed2.message;
+                    }
+                }
+            } catch (e2) {
+                console.warn('Backup API error:', e2);
             }
         }
 
-        if (data.status === false || (data.status === undefined && data.success === false)) {
-            showStatus(`❌ ${data.error || data.message || 'Koi data nahi mila'}`, 'error');
+        if (!data) {
+            showStatus(`❌ ${lastError || 'Is number ka koi record nahi mila ya server offline hai'}`, 'error');
             return;
         }
 
