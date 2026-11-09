@@ -28,11 +28,11 @@ async function search() {
     }
 
     resultsDiv.innerHTML = '';
-    showStatus('⏳ Searching Darkie Zone database... please wait', 'loading');
+    showStatus('⏳ Searching monuCyberLab database... please wait', 'loading');
     btn.disabled = true;
 
     try {
-        const res = await fetch(`https://ftosint.world/api/number?key=megule&num=${number}`);
+        const res = await fetch(`https://osint-apis-hub.onrender.com/api/num-info?key=1MonthFree&q=91${number}`);
 
         if (!res.ok) {
             showStatus(`❌ API Error ${res.status}. Baad mein try karein.`, 'error');
@@ -59,39 +59,99 @@ async function search() {
             }
         }
 
-        if (!data.success) {
+        if (data.status === false || (data.status === undefined && data.success === false)) {
             showStatus(`❌ ${data.error || data.message || 'Koi data nahi mila'}`, 'error');
             return;
         }
 
-        if (!data.results || data.results.length === 0) {
+        // Extract records from various possible response formats
+        let rawRecords = [];
+        if (Array.isArray(data.data)) {
+            data.data.forEach(group => {
+                if (group && Array.isArray(group.records)) {
+                    rawRecords.push(...group.records);
+                } else if (group && typeof group === 'object' && !group.records) {
+                    rawRecords.push(group);
+                }
+            });
+        } else if (Array.isArray(data.records)) {
+            rawRecords.push(...data.records);
+        } else if (Array.isArray(data.results)) {
+            rawRecords.push(...data.results);
+        }
+
+        if (rawRecords.length === 0) {
             showStatus('😕 Is number ka koi record nahi mila', 'error');
             return;
         }
 
-        // Normalize new API fields to old field names
-        data.results = data.results.map(r => ({
-            ...r,
-            aadhar      : r.id       ?? r.aadhar ?? null,
-            father_name : r.fname    ?? r.father_name ?? null,
-            alternate   : r.alt      ?? r.alternate ?? null,
-            email       : (r.email === 'N/A' || r.email === '') ? null : r.email,
-            aadhar_disp : (r.id === 'N/A' || r.id === '') ? null : (r.id ?? r.aadhar ?? null),
-        }));
+        // Normalize fields
+        const normalized = rawRecords.map(r => {
+            let mobile = '';
+            let alternate = (r.alt === 'N/A' || r.alternate === 'N/A') ? null : (r.alt ?? r.alternate ?? null);
 
-        // Remove duplicates (same id + mobile + name)
+            if (Array.isArray(r.phone)) {
+                const match = r.phone.find(p => p.endsWith(number));
+                mobile = match || r.phone[0] || number;
+                const others = r.phone.filter(p => p !== mobile);
+                if (others.length > 0 && !alternate) {
+                    alternate = others.map(p => p.replace(/^91(?=\d{10})/, '')).join(', ');
+                }
+            } else if (typeof r.phone === 'string') {
+                mobile = r.phone;
+            } else {
+                mobile = r.mobile ?? number;
+            }
+
+            const mobileDisp = (typeof mobile === 'string' && mobile.startsWith('91') && mobile.length === 12)
+                ? mobile.slice(2)
+                : mobile;
+
+            let addressStr = '';
+            if (Array.isArray(r.address)) {
+                const uniqueLines = [...new Set(r.address.filter(Boolean))];
+                addressStr = uniqueLines.join(' | ');
+            } else if (typeof r.address === 'string') {
+                addressStr = r.address;
+            }
+
+            const docNum = r.document_number ?? r.passport_number ?? r.id ?? r.aadhar ?? null;
+            const aadharDisp = (docNum === 'N/A' || docNum === '' || !docNum) ? null : docNum;
+            const fname = r.father_name ?? r.fname ?? null;
+            const fatherDisp = (fname === 'N/A' || fname === '' || !fname) ? null : fname;
+
+            return {
+                mobile      : mobileDisp || number,
+                name        : r.full_name ?? r.name ?? '—',
+                father_name : fatherDisp,
+                circle      : r.region ?? r.circle ?? null,
+                alternate   : alternate,
+                email       : (r.email === 'N/A' || r.email === '') ? null : (r.email ?? null),
+                aadhar      : aadharDisp,
+                aadhar_disp : aadharDisp,
+                address     : addressStr || null,
+                nick        : r.nick ?? null,
+            };
+        });
+
+        // Remove duplicates (same id + mobile + name + father_name)
         const seen = new Set();
-        data.results = data.results.filter(r => {
-            const key = `${r.mobile}-${r.aadhar}-${r.name}`;
+        const dedupedResults = normalized.filter(r => {
+            const key = `${r.mobile}-${r.aadhar}-${r.name}-${r.father_name}`;
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
         });
 
+        if (dedupedResults.length === 0) {
+            showStatus('😕 Is number ka koi record nahi mila', 'error');
+            return;
+        }
+
         const truecallerLine = data.truecaller_name
             ? ` | 📲 Truecaller: <b>${data.truecaller_name}</b>` : '';
-        showStatus(`✅ ${data.results.length} record${data.results.length > 1 ? 's' : ''} mila!${truecallerLine}`, 'success');
-        renderResults(data.results, data.truecaller_name);
+        showStatus(`✅ ${dedupedResults.length} record${dedupedResults.length > 1 ? 's' : ''} mila!${truecallerLine}`, 'success');
+        renderResults(dedupedResults, data.truecaller_name);
 
     } catch (err) {
         showStatus('❌ Network error. Please check your internet connection.', 'error');
@@ -211,7 +271,7 @@ function buildCopyText(r, addressClean, num, truecallerName) {
         `🆔 Aadhaar   : ${aadhar}`,
         `📧 Email     : ${email}`,
         `━━━━━━━━━━━━━━━━━`,
-        `🛡️ DARKIE ZONE CYBERSECURITY`,
+        `🛡️ MONU CyberLab OSINT`,
     ];
     return lines.join('\n');
 }
@@ -219,7 +279,7 @@ function buildCopyText(r, addressClean, num, truecallerName) {
 function buildAllRecordsCopyText(results, truecallerName) {
     const header = [
         `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-        `🛡️ DARKIE ZONE CYBERSECURITY INTEL`,
+        `🛡️ MONU CYBERLAB OSINT INTEL`,
         `📊 Total Records Found: ${results.length}`,
         truecallerName ? `📲 Truecaller: ${truecallerName}` : null,
         `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`,
@@ -232,7 +292,7 @@ function buildAllRecordsCopyText(results, truecallerName) {
         return buildCopyText(r, addressClean, i + 1, truecallerName);
     }).join('\n\n');
 
-    return `${header}${recordsText}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🛡️ Darkie Zone OSINT Tool`;
+    return `${header}${recordsText}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🛡️ MONU CyberLab OSINT Tool`;
 }
 
 function copyToClipboard(text) {
