@@ -28,7 +28,7 @@ async function search() {
     }
 
     resultsDiv.innerHTML = '';
-    showStatus('⏳ Searching monuCyberLab database... please wait', 'loading');
+    showStatus('⏳ Searching Darkie Zone database... please wait', 'loading');
     btn.disabled = true;
 
     try {
@@ -271,7 +271,7 @@ function buildCopyText(r, addressClean, num, truecallerName) {
         `🆔 Aadhaar   : ${aadhar}`,
         `📧 Email     : ${email}`,
         `━━━━━━━━━━━━━━━━━`,
-        `🛡️ MONU CyberLab OSINT`,
+        `🛡️ DARKIE ZONE CYBERSECURITY`,
     ];
     return lines.join('\n');
 }
@@ -279,7 +279,7 @@ function buildCopyText(r, addressClean, num, truecallerName) {
 function buildAllRecordsCopyText(results, truecallerName) {
     const header = [
         `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-        `🛡️ MONU CYBERLAB OSINT INTEL`,
+        `🛡️ DARKIE ZONE CYBERSECURITY INTEL`,
         `📊 Total Records Found: ${results.length}`,
         truecallerName ? `📲 Truecaller: ${truecallerName}` : null,
         `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`,
@@ -292,7 +292,7 @@ function buildAllRecordsCopyText(results, truecallerName) {
         return buildCopyText(r, addressClean, i + 1, truecallerName);
     }).join('\n\n');
 
-    return `${header}${recordsText}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🛡️ MONU CyberLab OSINT Tool`;
+    return `${header}${recordsText}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🛡️ Darkie Zone OSINT Tool`;
 }
 
 function copyToClipboard(text) {
